@@ -1,13 +1,14 @@
 """
-Amazon Bedrock Agent Core Runtime - Weather Agent (v2)
+Amazon Bedrock Agent Core Runtime - Weather Agent
 Uses Agent Core Gateway for MCP tool access with IAM SigV4 authentication
+Uses AgentCoreMemorySessionManager for efficient memory management
 """
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from bedrock_agentcore.memory import MemoryClient
+from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
+from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
 from strands import Agent
 from strands.models.bedrock import BedrockModel
 from strands.tools.mcp import MCPClient
-from strands.hooks import AgentInitializedEvent, HookProvider, HookRegistry, MessageAddedEvent
 from botocore.credentials import Credentials
 from streamable_http_sigv4 import streamablehttp_client_with_sigv4
 import os
@@ -68,109 +69,79 @@ gateway_endpoint = f"https://{gateway_id}.gateway.bedrock-agentcore.{AWS_REGION}
 
 logger.info(f"Gateway Endpoint: {gateway_endpoint}")
 
-class MemoryHookProvider(HookProvider):
-    """Hook provider for Agent Core Memory integration - only stores messages"""
-    
-    def __init__(self, memory_client: MemoryClient, memory_id: str, get_session_info):
-        self.memory_client = memory_client
-        self.memory_id = memory_id
-        self.get_session_info = get_session_info
-    
-    def on_message_added(self, event: MessageAddedEvent):
-        """Store messages in memory"""
-        messages = event.agent.messages
-        try:
-            # Get session info from callback
-            actor_id, session_id = self.get_session_info()
-
-            if messages[-1]["content"][0].get("text"):
-                self.memory_client.create_event(
-                    memory_id=self.memory_id,
-                    actor_id=actor_id,
-                    session_id=session_id,
-                    messages=[(messages[-1]["content"][0]["text"], messages[-1]["role"])]
-                )
-                logger.info(f"✅ Stored message in memory")
-        except Exception as e:
-            logger.error(f"Memory save error: {e}")
-    
-    def register_hooks(self, registry: HookRegistry):
-        # Only register message storage hook
-        registry.add_callback(MessageAddedEvent, self.on_message_added)
-
-# Global MCP client and memory client to keep connections alive
+# Global MCP client to keep connection alive
 mcp_client = None
-memory_client = None
-agent = None
 
-# Global session info for memory hooks
-current_session_info = {"actor_id": None, "session_id": None}
-
-def get_session_info():
-    """Callback for memory hooks to get current session info"""
-    return current_session_info["actor_id"], current_session_info["session_id"]
-
-# Initialize Memory Client if Memory ID is configured
-if MEMORY_ID:
-    try:
-        memory_client = MemoryClient(region_name=AWS_REGION)
-        logger.info("Memory Client initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize Memory Client: {e}")
-        memory_client = None
-
-def initialize_agent_with_gateway():
-    """Initialize agent with Gateway tools using MCP Client with SigV4 auth"""
-    global mcp_client, agent
+def create_agent_with_session_manager(session_id: str, user_id: str):
+    """
+    Create agent with session-specific memory manager
+    
+    Args:
+        session_id: Slack thread timestamp or session identifier
+        user_id: Slack user ID or actor identifier
+    
+    Returns:
+        Agent instance with configured session manager
+    """
+    global mcp_client
     
     try:
         if not gateway_endpoint:
             logger.error("Cannot initialize: Gateway endpoint not configured")
-            agent = Agent(
+            return Agent(
                 model=model,
                 system_prompt="I'm sorry, but I'm not properly configured. Please contact support."
             )
-            return
         
-        logger.info("Initializing MCP Client with SigV4 authentication...")
-        
-        # Create MCP client with SigV4 authentication
-        mcp_client = MCPClient(lambda: streamablehttp_client_with_sigv4(
-            url=gateway_endpoint,
-            credentials=frozen_credentials,
-            service="bedrock-agentcore",
-            region=AWS_REGION
-        ))
-        
-        # Start the MCP client connection
-        mcp_client.__enter__()
+        # Initialize MCP client if not already done
+        if mcp_client is None:
+            logger.info("Initializing MCP Client with SigV4 authentication...")
+            mcp_client = MCPClient(lambda: streamablehttp_client_with_sigv4(
+                url=gateway_endpoint,
+                credentials=frozen_credentials,
+                service="bedrock-agentcore",
+                region=AWS_REGION
+            ))
+            mcp_client.__enter__()
+            logger.info("MCP Client initialized and connected")
         
         # Get tools from Gateway
-        logger.info("Listing tools from Gateway...")
         mcp_tools = mcp_client.list_tools_sync()
         logger.info(f"Retrieved {len(mcp_tools)} tools from Gateway")
         
-        # Prepare hooks for memory if available
-        hooks = []
-        if memory_client and MEMORY_ID:
-            hooks.append(MemoryHookProvider(memory_client, MEMORY_ID, get_session_info))
-            logger.info("Memory hooks configured")
+        # Create session manager if memory is configured
+        session_manager = None
+        if MEMORY_ID:
+            try:
+                agentcore_memory_config = AgentCoreMemoryConfig(
+                    memory_id=MEMORY_ID,
+                    session_id=session_id,
+                    actor_id=user_id
+                )
+                
+                session_manager = AgentCoreMemorySessionManager(
+                    agentcore_memory_config=agentcore_memory_config,
+                    region_name=AWS_REGION
+                )
+                logger.info(f"✅ Session manager configured - Actor: {user_id}, Session: {session_id}")
+            except Exception as e:
+                logger.error(f"Failed to create session manager: {e}")
+                session_manager = None
         
-        # Create agent with Gateway tools and memory hooks
+        # Create agent with session manager
         agent = Agent(
             model=model,
             tools=mcp_tools,
-            hooks=hooks,
+            session_manager=session_manager,  # ← Handles memory automatically!
             system_prompt="""You are a helpful weather assistant with access to weather tools.
 
 CRITICAL RULES FOR LOCATION HANDLING:
 1. NEVER use a default location (like San Francisco) - if unclear, ask the user
 2. ALWAYS mention the city name in your response (e.g., "In New York, the temperature is...")
 3. When user asks follow-up questions like "tomorrow", "how about tomorrow", "what about 2 days from now" WITHOUT specifying a location:
-   - FIRST check if there's a "Previous conversation:" section in the user's message
-   - Look for the MOST RECENT city/location mentioned in that conversation
+   - Check your conversation history for the most recent city/location mentioned
    - Use that same location for the follow-up question
-   - If you cannot find any location in the previous conversation, then ask the user
+   - If you cannot find any location in the conversation history, then ask the user
 
 CRITICAL RULES FOR ACCURACY - READ CAREFULLY:
 1. Tools return JSON strings. You MUST parse them and use ONLY the values in the JSON.
@@ -180,8 +151,6 @@ CRITICAL RULES FOR ACCURACY - READ CAREFULLY:
 5. If the tool returns {"temperature_fahrenheit": 45.2}, you say "45.2°F" - NOT "about 45°F" or "mid-40s".
 6. If the tool doesn't provide a value (like humidity), DO NOT mention it.
 
-IMPORTANT: The user's message may include "Previous conversation:" followed by chat history. This is YOUR conversation history with this user. Pay close attention to locations mentioned there.
-
 Available tools:
 - get_coordinates(location): Returns JSON with latitude, longitude, display_name
 - get_weather(lat, lon): Returns JSON with temperature_fahrenheit, conditions, wind_speed_mph, wind_direction
@@ -190,7 +159,7 @@ Available tools:
 - get_current_time(timezone): Returns JSON with timezone, datetime, formatted
 
 Workflow:
-1. Check if user's message contains "Previous conversation:" - if yes, extract the most recent location mentioned
+1. Check your conversation history for context (locations mentioned, previous questions)
 2. If user asks about weather in a location, first call get_coordinates(location)
 3. Then call the appropriate weather tool with the coordinates
 4. Parse the JSON response carefully - it will be a string like '{"temperature_fahrenheit": 55, "conditions": "Partly cloudy"}'
@@ -214,19 +183,15 @@ WRONG responses (DO NOT DO THIS):
 Remember: Use EXACT values from tool responses. Do not round, estimate, or add information."""
         )
         
-        logger.info("Agent created successfully with Gateway tools - connection kept alive")
+        logger.info("✅ Agent created successfully with session manager")
+        return agent
             
     except Exception as e:
-        logger.error(f"Error initializing agent with Gateway: {e}", exc_info=True)
-        # Create a fallback agent without tools
-        agent = Agent(
+        logger.error(f"Error creating agent: {e}", exc_info=True)
+        return Agent(
             model=model,
             system_prompt="I'm sorry, but I'm having trouble accessing my tools right now. Please try again later."
         )
-
-# Initialize agent with Gateway
-logger.info("Initializing agent with Gateway-backed MCP tools using IAM SigV4 authentication")
-initialize_agent_with_gateway()
 
 @app.entrypoint
 def invoke(payload):
@@ -241,8 +206,6 @@ def invoke(payload):
         "accessToken": "optional-jwt-token"  # For Identity-enabled agents
     }
     """
-    global agent
-    
     user_message = payload.get("prompt", "")
     session_id = payload.get("sessionId", "default_session")
     user_id = payload.get("userId", "default_user")
@@ -257,12 +220,6 @@ def invoke(payload):
     
     logger.info(f"Processing request - Session: {session_id}, User: {user_id}, Identity: {IDENTITY_ENABLED}")
     
-    # Set session info for memory hooks
-    if memory_client and MEMORY_ID:
-        current_session_info["actor_id"] = user_id
-        current_session_info["session_id"] = session_id
-        logger.info(f"Memory session configured - Actor: {user_id}, Session: {session_id}")
-    
     # Handle Identity-based authentication if enabled
     if IDENTITY_ENABLED and access_token:
         try:
@@ -276,71 +233,19 @@ def invoke(payload):
                 "message": "Invalid or expired access token"
             }
     
-    # Load conversation history from memory if available
-    conversation_history = []
-    if memory_client and MEMORY_ID and session_id and user_id:
-        try:
-            logger.info(f"Attempting to load memory - Memory ID: {MEMORY_ID}, Actor: {user_id}, Session: {session_id}")
-            recent_turns = memory_client.get_last_k_turns(
-                memory_id=MEMORY_ID,
-                actor_id=user_id,
-                session_id=session_id,
-                k=5
-            )
-            
-            if recent_turns:
-                # Build proper message history for the agent
-                for turn in recent_turns:
-                    for message in turn:
-                        role = message['role'].lower()  # Ensure lowercase for Bedrock API
-                        content = message['content']['text']
-                        # Convert to agent message format
-                        conversation_history.append({
-                            "role": role,
-                            "content": [{"text": content}]
-                        })
-                
-                # Bedrock requires conversation to start with user message
-                # Remove all leading assistant messages
-                removed_count = 0
-                while conversation_history and conversation_history[0]["role"] == "assistant":
-                    conversation_history.pop(0)
-                    removed_count += 1
-                
-                if removed_count > 0:
-                    logger.warning(f"⚠️ Removed {removed_count} leading assistant message(s) to comply with Bedrock requirements")
-                
-                logger.info(f"✅ Loaded {len(recent_turns)} conversation turns from memory ({len(conversation_history)} messages, starts with: {conversation_history[0]['role'] if conversation_history else 'none'})")
-            else:
-                logger.info("No conversation history found in memory")
-        except Exception as e:
-            logger.warning(f"Could not load memory: {e}")
-    else:
-        logger.warning(f"Memory loading skipped - memory_client: {memory_client is not None}, MEMORY_ID: {MEMORY_ID}, session_id: {session_id}, user_id: {user_id}")
+    # Create agent with session-specific memory manager
+    # This automatically handles memory retrieval and storage
+    agent = create_agent_with_session_manager(session_id, user_id)
     
-    # Invoke agent with conversation context
+    # Invoke agent - memory is handled automatically by session manager!
     try:
-        # If we have conversation history, prepend as text context
-        if conversation_history:
-            # Format history as text
-            history_text = "Previous conversation:\n"
-            for msg in conversation_history:
-                role = msg["role"]
-                content = msg["content"][0]["text"]
-                history_text += f"{role}: {content}\n"
-            
-            enhanced_message = f"{history_text}\nCurrent question: {user_message}"
-            logger.info(f"📝 Enhanced message with {len(conversation_history)} messages from history")
-            result = agent(enhanced_message)
-        else:
-            logger.info(f"📝 No conversation history, using fresh context")
-            result = agent(user_message)
+        logger.info(f"📝 Invoking agent with message: {user_message}")
+        result = agent(user_message)
         
         # Log the full agent result for debugging
         logger.info(f"🔍 Full agent result: {result}")
         
         # Extract the final message from the result
-        # The result should have the final response after tool execution
         if hasattr(result, 'message'):
             final_message = result.message
         elif hasattr(result, 'content'):
@@ -362,7 +267,7 @@ def invoke(payload):
         if IDENTITY_ENABLED and user_id:
             response["userId"] = user_id
         
-        logger.info("Request processed successfully")
+        logger.info("✅ Request processed successfully")
         return response
         
     except Exception as e:
