@@ -93,10 +93,6 @@ export class WeatherAgentImageStack extends cdk.Stack {
             removalPolicy: cdk.RemovalPolicy.DESTROY,
           }),
         },
-        s3: {
-          bucket: logBucket,
-          prefix: 'codebuild-logs/',
-        },
       },
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
