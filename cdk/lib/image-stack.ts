@@ -3,6 +3,7 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as path from 'path';
@@ -84,6 +85,15 @@ export class WeatherAgentImageStack extends cdk.Stack {
         },
       },
       encryptionKey: encryptionKey,
+      logging: {
+        cloudWatch: {
+          logGroup: new logs.LogGroup(this, 'BuildLogGroup', {
+            logGroupName: `/aws/codebuild/${this.stackName}`,
+            retention: logs.RetentionDays.ONE_WEEK,
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+          }),
+        },
+      },
       buildSpec: codebuild.BuildSpec.fromObject({
         version: '0.2',
         phases: {
