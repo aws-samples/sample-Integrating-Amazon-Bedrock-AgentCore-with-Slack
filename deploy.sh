@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# Deployment script for Weather Agent with Slack Integration (v2 CDK)
+# Deployment script for Weather Agent with Slack Integration
 # This script deploys all 3 CDK stacks in the correct order
-# v2 uses Agent Core Gateway for proper tool routing
 
 set -e
 
@@ -10,15 +9,15 @@ set -e
 AWS_REGION=${AWS_REGION:-us-east-1}
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-echo "=== Weather Agent CDK Deployment (v2) ==="
+echo "=== Weather Agent CDK Deployment ==="
 echo "AWS Account: $AWS_ACCOUNT_ID"
 echo "AWS Region: $AWS_REGION"
 echo ""
-echo "v2 Changes:"
-echo "  - Agent Runtime uses Gateway for tool access"
-echo "  - Proper MCP protocol routing"
-echo "  - Runtime → Gateway → Lambda architecture"
-echo "  - All stacks deployed via CDK"
+echo "This deployment includes:"
+echo "  - Amazon Bedrock Agent Core Runtime with Gateway integration"
+echo "  - MCP Lambda server for weather tools"
+echo "  - Slack integration with API Gateway and Lambda functions"
+echo "  - Conversation memory with 90-day retention"
 echo ""
 
 # Check if Slack credentials are provided
@@ -116,7 +115,7 @@ cdk deploy WeatherAgentSlackStack --require-approval never
 
 # Get outputs
 echo ""
-echo "=== Deployment Complete (v2 CDK) ==="
+echo "=== Deployment Complete ==="
 echo ""
 echo "Getting stack outputs..."
 
@@ -149,7 +148,7 @@ echo "  Runtime ARN:  $RUNTIME_ARN"
 echo "  Gateway ARN:  $GATEWAY_ARN"
 echo "  Webhook URL:  $WEBHOOK_URL"
 echo ""
-echo "Architecture (v2):"
+echo "Architecture:"
 echo "  Slack → API Gateway → Lambda → SQS → Lambda → Runtime → Gateway → MCP Lambda"
 echo ""
 
