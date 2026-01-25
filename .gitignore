@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# CDK
+cdk/node_modules/
+cdk/dist/
+cdk/cdk.out/
+cdk/*.js
+cdk/*.d.ts
+cdk/cdk-nag-report.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Security Reports (keep locally, don't commit)
+CDK-NAG-SECURITY-REPORT.md

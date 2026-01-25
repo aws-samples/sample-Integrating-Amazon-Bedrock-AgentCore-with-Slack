@@ -1,0 +1,6 @@
+strands-agents
+bedrock-agentcore
+boto3
+mcp
+httpx
+anyio

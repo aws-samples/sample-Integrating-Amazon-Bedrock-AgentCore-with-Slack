@@ -1,0 +1,30 @@
+{
+  "name": "weather-agent-cdk-v2",
+  "version": "2.0.0",
+  "description": "Weather Agent with Slack Integration - CDK v2 (Gateway-based)",
+  "bin": {
+    "weather-agent-cdk": "dist/bin/app.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "npm run build && cdk deploy --all --require-approval never",
+    "deploy:image": "npm run build && cdk deploy WeatherAgentImageStack --require-approval never",
+    "deploy:agent": "npm run build && cdk deploy WeatherAgentCoreStack --require-approval never",
+    "deploy:slack": "npm run build && cdk deploy WeatherAgentSlackStack --require-approval never",
+    "destroy": "cdk destroy --all",
+    "synth": "cdk synth"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "aws-cdk": "^2.235.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-bedrock-agentcore-alpha": "^2.235.1-alpha.0",
+    "aws-cdk-lib": "^2.235.0",
+    "constructs": "^10.3.0",
+    "source-map-support": "^0.5.21"
+  }
+}
