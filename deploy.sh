@@ -97,21 +97,116 @@ npm run build
 echo "Checking CDK bootstrap..."
 cdk bootstrap "aws://${AWS_ACCOUNT_ID}/${AWS_REGION}" 2>/dev/null || echo "Already bootstrapped"
 
+# Function to deploy a stack with timeout and verification
+deploy_stack_with_timeout() {
+    local stack_name=$1
+    local step_num=$2
+    local timeout=1800  # 30 minutes timeout
+    
+    echo ""
+    echo "Step ${step_num}/3: Deploying ${stack_name}..."
+    
+    # Start CDK deploy in background
+    cdk deploy "${stack_name}" --require-approval never &
+    local cdk_pid=$!
+    
+    # Monitor the deployment with timeout
+    local elapsed=0
+    local check_interval=10
+    
+    while kill -0 $cdk_pid 2>/dev/null; do
+        sleep $check_interval
+        elapsed=$((elapsed + check_interval))
+        
+        # Check actual CloudFormation stack status
+        local stack_status=$(aws cloudformation describe-stacks \
+            --stack-name "${stack_name}" \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "NOT_FOUND")
+        
+        # If stack is complete but CDK is still running, kill CDK and continue
+        if [[ "$stack_status" == "CREATE_COMPLETE" ]] || [[ "$stack_status" == "UPDATE_COMPLETE" ]]; then
+            echo "✓ Stack ${stack_name} completed successfully (detected via CloudFormation)"
+            kill $cdk_pid 2>/dev/null
+            wait $cdk_pid 2>/dev/null
+            return 0
+        fi
+        
+        # Check for failed states
+        if [[ "$stack_status" == *"FAILED"* ]] || [[ "$stack_status" == "ROLLBACK_COMPLETE" ]]; then
+            echo "✗ Stack ${stack_name} failed with status: ${stack_status}"
+            kill $cdk_pid 2>/dev/null
+            wait $cdk_pid 2>/dev/null
+            return 1
+        fi
+        
+        # Timeout check
+        if [ $elapsed -ge $timeout ]; then
+            echo "⚠️  CDK deployment timeout after ${timeout}s, checking CloudFormation status..."
+            kill $cdk_pid 2>/dev/null
+            wait $cdk_pid 2>/dev/null
+            
+            # Final status check
+            stack_status=$(aws cloudformation describe-stacks \
+                --stack-name "${stack_name}" \
+                --query 'Stacks[0].StackStatus' \
+                --output text 2>/dev/null || echo "NOT_FOUND")
+            
+            if [[ "$stack_status" == "CREATE_COMPLETE" ]] || [[ "$stack_status" == "UPDATE_COMPLETE" ]]; then
+                echo "✓ Stack ${stack_name} is complete (verified via CloudFormation)"
+                return 0
+            else
+                echo "✗ Stack ${stack_name} status: ${stack_status}"
+                return 1
+            fi
+        fi
+    done
+    
+    # CDK process finished normally
+    wait $cdk_pid
+    local exit_code=$?
+    
+    if [ $exit_code -eq 0 ]; then
+        echo "✓ Stack ${stack_name} deployed successfully"
+        return 0
+    else
+        # Verify actual stack status even if CDK failed
+        local stack_status=$(aws cloudformation describe-stacks \
+            --stack-name "${stack_name}" \
+            --query 'Stacks[0].StackStatus' \
+            --output text 2>/dev/null || echo "NOT_FOUND")
+        
+        if [[ "$stack_status" == "CREATE_COMPLETE" ]] || [[ "$stack_status" == "UPDATE_COMPLETE" ]]; then
+            echo "✓ Stack ${stack_name} is complete (CDK reported error but stack succeeded)"
+            return 0
+        else
+            echo "✗ Stack ${stack_name} deployment failed"
+            return 1
+        fi
+    fi
+}
+
 # Deploy all stacks
 echo ""
 echo "=== Deploying All Stacks Sequentially ==="
 
-echo ""
-echo "Step 1/3: Deploying Image Stack..."
-cdk deploy WeatherAgentImageStack --require-approval never
+# Deploy Image Stack
+if ! deploy_stack_with_timeout "WeatherAgentImageStack" "1"; then
+    echo "Failed to deploy Image Stack. Exiting."
+    exit 1
+fi
 
-echo ""
-echo "Step 2/3: Deploying Agent Core Stack..."
-cdk deploy WeatherAgentCoreStack --require-approval never
+# Deploy Agent Core Stack
+if ! deploy_stack_with_timeout "WeatherAgentCoreStack" "2"; then
+    echo "Failed to deploy Agent Core Stack. Exiting."
+    exit 1
+fi
 
-echo ""
-echo "Step 3/3: Deploying Slack Stack..."
-cdk deploy WeatherAgentSlackStack --require-approval never
+# Deploy Slack Stack
+if ! deploy_stack_with_timeout "WeatherAgentSlackStack" "3"; then
+    echo "Failed to deploy Slack Stack. Exiting."
+    exit 1
+fi
 
 # Get outputs
 echo ""
