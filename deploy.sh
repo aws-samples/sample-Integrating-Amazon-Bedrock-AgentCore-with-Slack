@@ -10,8 +10,8 @@ AWS_REGION=${AWS_REGION:-us-east-1}
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 echo "=== Weather Agent CDK Deployment ==="
-echo "AWS Account: $AWS_ACCOUNT_ID"
-echo "AWS Region: $AWS_REGION"
+echo "AWS Account: ${AWS_ACCOUNT_ID}"
+echo "AWS Region: ${AWS_REGION}"
 echo ""
 echo "This deployment includes:"
 echo "  - Amazon Bedrock Agent Core Runtime with Gateway integration"
@@ -95,7 +95,7 @@ npm run build
 
 # Bootstrap CDK (if not already done)
 echo "Checking CDK bootstrap..."
-cdk bootstrap aws://$AWS_ACCOUNT_ID/$AWS_REGION 2>/dev/null || echo "Already bootstrapped"
+cdk bootstrap "aws://${AWS_ACCOUNT_ID}/${AWS_REGION}" 2>/dev/null || echo "Already bootstrapped"
 
 # Deploy all stacks
 echo ""
@@ -123,19 +123,19 @@ WEBHOOK_URL=$(aws cloudformation describe-stacks \
     --stack-name WeatherAgentSlackStack \
     --query 'Stacks[0].Outputs[?OutputKey==`WebhookURL`].OutputValue' \
     --output text \
-    --region $AWS_REGION 2>/dev/null || echo "Not available yet")
+    --region "${AWS_REGION}" 2>/dev/null || echo "Not available yet")
 
 RUNTIME_ARN=$(aws cloudformation describe-stacks \
     --stack-name WeatherAgentCoreStack \
     --query 'Stacks[0].Outputs[?OutputKey==`RuntimeArn`].OutputValue' \
     --output text \
-    --region $AWS_REGION 2>/dev/null || echo "Not available yet")
+    --region "${AWS_REGION}" 2>/dev/null || echo "Not available yet")
 
 GATEWAY_ARN=$(aws cloudformation describe-stacks \
     --stack-name WeatherAgentCoreStack \
     --query 'Stacks[0].Outputs[?OutputKey==`GatewayArn`].OutputValue' \
     --output text \
-    --region $AWS_REGION 2>/dev/null || echo "Not available yet")
+    --region "${AWS_REGION}" 2>/dev/null || echo "Not available yet")
 
 echo ""
 echo "Stack Information:"
@@ -144,9 +144,9 @@ echo "  Agent Stack:  WeatherAgentCoreStack"
 echo "  Slack Stack:  WeatherAgentSlackStack"
 echo ""
 echo "Resources:"
-echo "  Runtime ARN:  $RUNTIME_ARN"
-echo "  Gateway ARN:  $GATEWAY_ARN"
-echo "  Webhook URL:  $WEBHOOK_URL"
+echo "  Runtime ARN:  ${RUNTIME_ARN}"
+echo "  Gateway ARN:  ${GATEWAY_ARN}"
+echo "  Webhook URL:  ${WEBHOOK_URL}"
 echo ""
 echo "Architecture:"
 echo "  Slack → API Gateway → Lambda → SQS → Lambda → Runtime → Gateway → MCP Lambda"
@@ -159,7 +159,7 @@ if [ -n "$SLACK_BOT_TOKEN" ] && [ "$SLACK_BOT_TOKEN" != "PLACEHOLDER" ]; then
     echo "Next steps:"
     echo "1. Go to your Slack App settings: https://api.slack.com/apps"
     echo "2. Navigate to Event Subscriptions"
-    echo "3. Set Request URL to: $WEBHOOK_URL"
+    echo "3. Set Request URL to: ${WEBHOOK_URL}"
     echo "4. Ensure these events are subscribed:"
     echo "   - app_mention"
     echo "   - message.im"
