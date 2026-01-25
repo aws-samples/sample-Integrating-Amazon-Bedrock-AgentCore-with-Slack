@@ -96,7 +96,6 @@ export class WeatherAgentImageStack extends cdk.Stack {
         s3: {
           bucket: logBucket,
           prefix: 'codebuild-logs/',
-          encryption: true,
         },
       },
       buildSpec: codebuild.BuildSpec.fromObject({
