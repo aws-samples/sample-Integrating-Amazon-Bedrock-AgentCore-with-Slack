@@ -1,3 +1,7 @@
+> [!NOTE]
+> The content presented here serves as an example intended solely for educational objectives and should not be implemented in a live production environment without proper modifications and rigorous testing.
+> This readme will be updated with blog post once approved.  Please follow instructions found in the draft blog post.
+
 # Weather Agent with Slack Integration
 
 Amazon Bedrock Agent Core Runtime integrated with Slack using AWS CDK for infrastructure deployment.
