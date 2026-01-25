@@ -37,3 +37,6 @@ Thumbs.db
 
 # Security Reports (keep locally, don't commit)
 CDK-NAG-SECURITY-REPORT.md
+
+# Deployment Guide (keep locally, don't commit)
+DEPLOYMENT-GUIDE.md
