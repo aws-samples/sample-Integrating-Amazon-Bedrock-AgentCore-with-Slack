@@ -31,8 +31,8 @@ The Agent Runtime invokes tools through the Agent Core Gateway (not directly), w
 - `requirements.txt`: Python dependencies
 
 ### Scripts
-- `deploy.sh`: Deploy all 3 CDK stacks
-- `cleanup.sh`: Destroy all resources
+- `deploy.sh`: Deploy all 3 CDK stacks with CLI parameters
+- `cleanup.sh`: Destroy all resources with region support
 
 ## Prerequisites
 
@@ -50,6 +50,15 @@ The Agent Runtime invokes tools through the Agent Core Gateway (not directly), w
 
 ### 1. Deploy
 
+**Option 1: Using CLI parameters (recommended)**
+```bash
+./deploy.sh --region us-east-1 \
+  --slack-token xoxb-your-token \
+  --slack-secret your-signing-secret \
+  --yes
+```
+
+**Option 2: Using environment variables**
 ```bash
 # Set Slack credentials
 export SLACK_BOT_TOKEN="xoxb-your-token"
@@ -59,11 +68,35 @@ export SLACK_SIGNING_SECRET="your-signing-secret"
 ./deploy.sh
 ```
 
+**Available deploy.sh options:**
+- `-h, --help` - Display help message
+- `-r, --region REGION` - AWS region (default: us-east-1)
+- `-t, --slack-token TOKEN` - Slack bot token
+- `-s, --slack-secret SECRET` - Slack signing secret
+- `-S, --skip-slack` - Skip Slack credentials (use placeholders)
+- `-y, --yes` - Auto-approve all prompts (non-interactive)
+- `-m, --model MODEL` - Foundation model ID (default: us.amazon.nova-pro-v1:0)
+- `-v, --verbose` - Enable verbose output
+
+**Examples:**
+```bash
+# Deploy to specific region
+./deploy.sh --region us-west-2
+
+# Non-interactive deployment for CI/CD
+./deploy.sh --yes --skip-slack
+
+# Deploy with custom model
+./deploy.sh --model anthropic.claude-3-sonnet-20240229-v1:0
+```
+
 The script will:
+- Validate AWS credentials and display account/role information
+- Validate Slack token with Slack API (shows workspace info)
 - Install CDK dependencies
 - Build TypeScript
 - Bootstrap CDK (if needed)
-- Deploy all 3 stacks in order
+- Deploy all 3 stacks in order with progress indicators
 - Display webhook URL and other outputs
 
 ### 2. Configure Slack
@@ -101,14 +134,26 @@ aws logs tail /aws/bedrock-agentcore/runtime/weatheragent_runtime --follow
 
 ## Cleanup
 
+**Option 1: Using CLI parameters**
 ```bash
+./cleanup.sh --region us-east-1
+```
+
+**Option 2: Using environment variables**
+```bash
+export AWS_REGION=us-east-1
 ./cleanup.sh
 ```
 
+**Available cleanup.sh options:**
+- `-h, --help` - Display help message
+- `-r, --region REGION` - AWS region (default: us-east-1)
+
 This will:
-- Destroy all 3 CDK stacks
+- Destroy all 3 CDK stacks (including failed stacks)
 - Clean up ECR images
 - Remove CloudWatch log groups
+- Preserve CDK staging buckets (may be used by other apps)
 
 ## Project Structure
 
