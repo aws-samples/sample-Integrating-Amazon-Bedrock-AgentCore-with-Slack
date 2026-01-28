@@ -5,9 +5,43 @@
 
 set -e
 
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -r|--region)
+            if [ -z "$2" ] || [[ "$2" == -* ]]; then
+                echo "Error: --region requires a value"
+                exit 1
+            fi
+            AWS_REGION="$2"
+            shift 2
+            ;;
+        -h|--help)
+            echo "Weather Agent CDK Cleanup Script"
+            echo ""
+            echo "USAGE:"
+            echo "    cleanup.sh [OPTIONS]"
+            echo ""
+            echo "OPTIONS:"
+            echo "    -r, --region REGION    AWS region (default: us-east-1)"
+            echo "    -h, --help             Display this help message"
+            echo ""
+            echo "EXAMPLES:"
+            echo "    ./cleanup.sh"
+            echo "    ./cleanup.sh --region us-west-2"
+            exit 0
+            ;;
+        *)
+            echo "Error: Unknown option $1"
+            echo "Run 'cleanup.sh --help' for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 # Configuration
 AWS_REGION=${AWS_REGION:-us-east-1}
-AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "unknown")
 
 echo "=== Weather Agent CDK Cleanup (v2) ==="
 echo "AWS Account: $AWS_ACCOUNT_ID"
@@ -50,6 +84,7 @@ npm run build
 echo ""
 echo "=== Checking for Failed Stacks ==="
 FAILED_STACKS=$(aws cloudformation list-stacks \
+    --region "$AWS_REGION" \
     --query 'StackSummaries[?StackStatus==`ROLLBACK_FAILED` || StackStatus==`CREATE_FAILED` || StackStatus==`DELETE_FAILED` && contains(StackName, `WeatherAgent`)].StackName' \
     --output text)
 
@@ -67,6 +102,7 @@ fi
 echo ""
 echo "=== Checking for Active Stacks ==="
 ACTIVE_STACKS=$(aws cloudformation list-stacks \
+    --region "$AWS_REGION" \
     --query 'StackSummaries[?StackStatus!=`DELETE_COMPLETE` && contains(StackName, `WeatherAgent`)].StackName' \
     --output text)
 

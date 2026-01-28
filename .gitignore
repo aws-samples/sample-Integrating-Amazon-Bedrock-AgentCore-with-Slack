@@ -16,6 +16,7 @@ cdk/cdk.out/
 cdk/*.js
 cdk/*.d.ts
 cdk/cdk-nag-report.txt
+package-lock.json
 
 # IDE
 .vscode/
@@ -40,3 +41,6 @@ CDK-NAG-SECURITY-REPORT.md
 
 # Deployment Guide (keep locally, don't commit)
 DEPLOYMENT-GUIDE.md
+
+# Kiro AI Assistant
+.kiro/

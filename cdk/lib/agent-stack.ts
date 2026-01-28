@@ -154,15 +154,43 @@ def get_historical(lat, lon, past_days=5):
       memorySize: 256,
     });
 
-    // Agent Core Gateway with IAM authentication
+    // Create execution role for Gateway (following AWS sample pattern with least privilege)
+    const gatewayExecutionRole = new iam.Role(this, 'GatewayExecutionRole', {
+      roleName: `${this.stackName}-gateway-execution-role`,
+      assumedBy: new iam.ServicePrincipal('bedrock-agentcore.amazonaws.com'),
+      description: 'Execution role for AgentCore Gateway to invoke Lambda',
+    });
+
+    // Grant permission to invoke only the specific MCP Lambda function
+    mcpServer.grantInvoke(gatewayExecutionRole);
+
+    // Add CloudWatch Logs permissions (scoped to this stack's log groups)
+    gatewayExecutionRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'logs:CreateLogGroup',
+          'logs:CreateLogStream',
+          'logs:PutLogEvents',
+        ],
+        resources: [
+          `arn:aws:logs:${region}:${accountId}:log-group:/aws/bedrock-agentcore/${this.stackName}*`,
+        ],
+      })
+    );
+
+    // Agent Core Gateway with IAM authentication and execution role
     const gateway = new agentcore.Gateway(this, 'Gateway', {
       gatewayName: `${this.stackName}-gateway`,
       description: 'Weather MCP Gateway',
       authorizerConfiguration: agentcore.GatewayAuthorizer.usingAwsIam(),
     });
 
+    // Use escape hatch to add the execution role to the underlying CloudFormation resource
+    const cfnGateway = gateway.node.defaultChild as cdk.CfnResource;
+    cfnGateway.addPropertyOverride('RoleArn', gatewayExecutionRole.roleArn);
+
     // Add Lambda target to Gateway using the new API
-    gateway.addLambdaTarget('WeatherTarget', {
+    const gatewayTarget = gateway.addLambdaTarget('WeatherTarget', {
       gatewayTargetName: 'WeatherTarget',
       description: 'Weather tools MCP Lambda target',
       lambdaFunction: mcpServer,
@@ -258,10 +286,14 @@ def get_historical(lat, lon, past_days=5):
           },
         },
       ]),
-      credentialProviderConfigurations: [
-        agentcore.GatewayCredentialProvider.fromIamRole(),
-      ],
     });
+
+    // Add explicit CloudFormation dependency to ensure IAM policy propagation
+    // This forces CloudFormation to wait for the IAM policy to be created before
+    // attempting to create the Gateway Target, giving time for IAM propagation
+    const cfnGatewayTarget = gatewayTarget.node.defaultChild as cdk.CfnResource;
+    const gatewayRolePolicy = gatewayExecutionRole.node.findChild('DefaultPolicy').node.defaultChild as cdk.CfnResource;
+    cfnGatewayTarget.addDependency(gatewayRolePolicy);
 
     // Grant agent role permissions
     agentRole.addToPolicy(
