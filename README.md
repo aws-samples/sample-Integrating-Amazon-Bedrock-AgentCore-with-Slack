@@ -28,7 +28,7 @@ The Agent Runtime invokes tools through the Agent Core Gateway (not directly), w
 - `agent_runtime.py`: Python agent using Strands SDK with Gateway integration and Memory
 - `streamable_http_sigv4.py`: Custom HTTP client with SigV4 signing for Gateway communication
 - `Dockerfile`: Container image for Agent Runtime
-- `requirements.txt`: Python dependencies
+- `requirements.txt`: Python dependencies 
 
 ### Scripts
 - `deploy.sh`: Deploy all 3 CDK stacks with CLI parameters
