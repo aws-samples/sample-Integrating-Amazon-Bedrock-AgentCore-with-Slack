@@ -55,7 +55,7 @@ export class WeatherAgentSlackStack extends cdk.Stack {
     // SQS Integration Lambda
     const sqsIntegrationFunction = new lambda.Function(this, 'SQSIntegration', {
       functionName: `${this.stackName}-sqs-integration`,
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
 const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
@@ -149,7 +149,7 @@ exports.handler = async (event) => {
     // Message Verification Lambda
     const verificationFunction = new lambda.Function(this, 'Verification', {
       functionName: `${this.stackName}-verification`,
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
@@ -224,7 +224,7 @@ exports.handler = async (event) => {
     // Agent Core Integration Lambda
     const agentIntegrationFunction = new lambda.Function(this, 'AgentIntegration', {
       functionName: `${this.stackName}-agent-integration`,
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
 const { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } = require('@aws-sdk/client-bedrock-agentcore');

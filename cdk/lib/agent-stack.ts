@@ -36,7 +36,7 @@ export class WeatherAgentCoreStack extends cdk.Stack {
     // Lambda returns: {content: [{type: "text", text: "..."}]}
     const mcpServer = new lambda.Function(this, 'MCPServer', {
       functionName: `${this.stackName}-mcp-server`,
-      runtime: lambda.Runtime.PYTHON_3_13,
+      runtime: lambda.Runtime.PYTHON_3_14,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
 import json, urllib.request, urllib.parse
