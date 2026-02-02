@@ -39,9 +39,22 @@ export class WeatherAgentCoreStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_14,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
-import json, urllib.request, urllib.parse
+import json, urllib.request, urllib.parse, os
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
+
+def log_debug(msg):
+    if LOG_LEVEL == 'DEBUG':
+        print(f"[DEBUG] {msg}")
+
+def log_info(msg):
+    if LOG_LEVEL in ['DEBUG', 'INFO']:
+        print(f"[INFO] {msg}")
+
+def log_error(msg):
+    print(f"[ERROR] {msg}")
 
 def handler(event, context):
     """
@@ -52,7 +65,7 @@ def handler(event, context):
     Gateway routes to this Lambda based on tool name in target config,
     so we need to detect which tool was called based on the arguments present.
     """
-    print(f"Received event: {json.dumps(event)}")
+    log_debug(f"Received event: {json.dumps(event)}")
     
     try:
         # Detect which tool based on arguments
@@ -76,11 +89,11 @@ def handler(event, context):
         else:
             result = {'content': [{'type': 'text', 'text': json.dumps({'error': f'Unknown tool arguments: {list(event.keys())}'})}]}
         
-        print(f"Result: {json.dumps(result)}")
+        log_debug(f"Result: {json.dumps(result)}")
         return result
         
     except Exception as e:
-        print(f"Error: {str(e)}")
+        log_error(f"Error: {str(e)}")
         import traceback
         traceback.print_exc()
         return {'content': [{'type': 'text', 'text': json.dumps({'error': str(e)})}]}
@@ -110,11 +123,11 @@ def get_weather(lat, lon):
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&temperature_unit=fahrenheit&windspeed_unit=mph"
         with urllib.request.urlopen(url, timeout=10) as r:
             data = json.loads(r.read().decode())
-        print(f"🌤️ Weather API response for ({lat}, {lon}): {json.dumps(data)}")
+        log_debug(f"Weather API response for ({lat}, {lon}): {json.dumps(data)}")
         current = data.get('current_weather', {})
         weather_codes = {0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast', 45: 'Foggy', 48: 'Depositing rime fog', 51: 'Light drizzle', 53: 'Moderate drizzle', 55: 'Dense drizzle', 61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain', 71: 'Slight snow', 73: 'Moderate snow', 75: 'Heavy snow', 77: 'Snow grains', 80: 'Slight rain showers', 81: 'Moderate rain showers', 82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers', 95: 'Thunderstorm', 96: 'Thunderstorm with slight hail', 99: 'Thunderstorm with heavy hail'}
         result = {'content': [{'type': 'text', 'text': json.dumps({'temperature_fahrenheit': current.get('temperature'), 'conditions': weather_codes.get(current.get('weathercode', 0), 'Unknown'), 'wind_speed_mph': current.get('windspeed'), 'wind_direction': current.get('winddirection')})}]}
-        print(f"🌤️ Returning weather result: {json.dumps(result)}")
+        log_debug(f"Returning weather result: {json.dumps(result)}")
         return result
     except Exception as e:
         return {'content': [{'type': 'text', 'text': json.dumps({'error': f'Weather API error: {str(e)}'})}]}
@@ -124,14 +137,14 @@ def get_forecast(lat, lon, days=5):
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&timezone=auto&forecast_days={min(days, 7)}"
         with urllib.request.urlopen(url, timeout=10) as r:
             data = json.loads(r.read().decode())
-        print(f"📅 Forecast API response for ({lat}, {lon}), {days} days: {json.dumps(data)}")
+        log_debug(f"Forecast API response for ({lat}, {lon}), {days} days: {json.dumps(data)}")
         daily = data.get('daily', {})
         weather_codes = {0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast', 45: 'Foggy', 48: 'Depositing rime fog', 51: 'Light drizzle', 53: 'Moderate drizzle', 55: 'Dense drizzle', 61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain', 71: 'Slight snow', 73: 'Moderate snow', 75: 'Heavy snow', 77: 'Snow grains', 80: 'Slight rain showers', 81: 'Moderate rain showers', 82: 'Violent rain showers', 85: 'Slight snow showers', 86: 'Heavy snow showers', 95: 'Thunderstorm', 96: 'Thunderstorm with slight hail', 99: 'Thunderstorm with heavy hail'}
         forecast = []
         for i in range(len(daily.get('time', []))):
             forecast.append({'date': daily['time'][i], 'high_temp_f': daily['temperature_2m_max'][i], 'low_temp_f': daily['temperature_2m_min'][i], 'precipitation_probability': daily['precipitation_probability_max'][i], 'conditions': weather_codes.get(daily['weathercode'][i], 'Unknown')})
         result = {'content': [{'type': 'text', 'text': json.dumps({'forecast_days': len(forecast), 'forecast': forecast})}]}
-        print(f"📅 Returning forecast result: {json.dumps(result)}")
+        log_debug(f"Returning forecast result: {json.dumps(result)}")
         return result
     except Exception as e:
         return {'content': [{'type': 'text', 'text': json.dumps({'error': f'Forecast API error: {str(e)}'})}]}
@@ -152,6 +165,9 @@ def get_historical(lat, lon, past_days=5):
       `),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
+      environment: {
+        LOG_LEVEL: 'INFO', // Set to 'DEBUG' for verbose logging, 'INFO' for production
+      },
     });
 
     // Create execution role for Gateway (following AWS sample pattern with least privilege)
