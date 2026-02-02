@@ -299,7 +299,7 @@ def get_historical(lat, lon, past_days=5):
     agentRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
-        resources: ['*'],
+        resources: [`arn:aws:logs:${region}:${accountId}:log-group:/aws/bedrock-agentcore/runtimes/weatheragent_runtime*`],
       })
     );
 
@@ -320,6 +320,7 @@ def get_historical(lat, lon, past_days=5):
       })
     );
 
+    // Note: ecr:GetAuthorizationToken does not support resource-level permissions per AWS documentation
     agentRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ['ecr:GetAuthorizationToken'],
@@ -331,13 +332,6 @@ def get_historical(lat, lon, past_days=5):
       new iam.PolicyStatement({
         actions: ['ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer'],
         resources: [`arn:aws:ecr:${this.region}:${this.account}:repository/weather-agent-runtime`],
-      })
-    );
-
-    agentRole.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['cognito-idp:DescribeUserPoolClient', 'cognito-idp:ListUserPools', 'cognito-idp:ListUserPoolClients'],
-        resources: ['*'],
       })
     );
 
@@ -396,30 +390,5 @@ def get_historical(lat, lon, past_days=5):
       description: 'Agent Core Memory ID',
       exportName: `${this.stackName}-MemoryId`,
     });
-
-    // Output Cognito details if available
-    if (gateway.tokenEndpointUrl) {
-      new cdk.CfnOutput(this, 'GatewayTokenEndpoint', {
-        value: gateway.tokenEndpointUrl,
-        description: 'Gateway OAuth2 Token Endpoint',
-        exportName: `${this.stackName}-TokenEndpoint`,
-      });
-    }
-
-    if (gateway.oauthScopes && gateway.oauthScopes.length > 0) {
-      new cdk.CfnOutput(this, 'GatewayOAuthScopes', {
-        value: gateway.oauthScopes.join(','),
-        description: 'Gateway OAuth2 Scopes',
-        exportName: `${this.stackName}-OAuthScopes`,
-      });
-    }
-
-    if (gateway.userPoolClient) {
-      new cdk.CfnOutput(this, 'GatewayUserPoolClientId', {
-        value: gateway.userPoolClient.userPoolClientId,
-        description: 'Gateway Cognito User Pool Client ID',
-        exportName: `${this.stackName}-UserPoolClientId`,
-      });
-    }
   }
 }

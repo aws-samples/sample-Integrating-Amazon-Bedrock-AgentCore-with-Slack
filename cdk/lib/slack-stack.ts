@@ -364,7 +364,7 @@ exports.handler = async (event) => {
     agentIntegrationFunction.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-        resources: ['*'],
+        resources: [props.agentRuntimeArn],
       })
     );
 
