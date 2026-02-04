@@ -34,11 +34,44 @@ The Agent Runtime invokes tools through the Agent Core Gateway (not directly), w
 - `deploy.sh`: Deploy all 3 CDK stacks with CLI parameters
 - `cleanup.sh`: Destroy all resources with region support
 
+## Cost
+
+You are responsible for the cost of the AWS services used while running this guidance.
+
+As of February 2025, the cost for running this guidance with the default settings in the US East (N. Virginia) Region is approximately **$50.00** per month for moderate usage (1,000 Slack messages with agent interactions).
+
+We recommend creating a [Budget](https://console.aws.amazon.com/billing/home#/budgets) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this guidance.
+
+### Sample Cost Table
+
+| AWS Service | Dimensions | Cost (USD) |
+|-------------|------------|------------|
+| Amazon Bedrock AgentCore Runtime | 1,000 sessions/month, 3 min avg duration | $15.00/month |
+| Amazon Bedrock (Nova Pro) | 1,000 conversations, 2K input + 1K output tokens avg | $20.00/month |
+| AWS Lambda | 5,000 invocations/month, 512MB memory, 1s avg duration | $5.00/month |
+| Amazon SQS | 5,000 messages/month | $0.00/month |
+| Amazon API Gateway | 5,000 requests/month | $0.02/month |
+| Amazon ECR | 1GB storage | $0.10/month |
+| AWS CodeBuild | 10 builds/month, 5 min avg duration | $0.50/month |
+| AWS Secrets Manager | 2 secrets | $0.80/month |
+| Amazon CloudWatch Logs | 5GB ingestion, 1GB storage | $3.00/month |
+
+**Note**: Costs scale with usage. The cleanup script helps avoid ongoing charges when the system is not in use.
+
 ## Prerequisites
 
 1. **AWS CLI** configured with credentials
-2. **Node.js** (v18+) and npm
-3. **Slack App** created with:
+2. **AWS CDK CLI** v2.103.0 or later
+   - This project uses CDK schema version 48.0.0, which requires AWS CDK CLI v2.103.0 or later
+   - Check your version: `cdk --version`
+   - Upgrade if needed: `npm install -g aws-cdk@latest`
+   - Without the correct version, you may see this error:
+     ```
+     This CDK CLI is not compatible with the CDK library used by your application.
+     Maximum schema version supported is 44.x.x, but found 48.0.0
+     ```
+3. **Node.js** (v18+) and npm
+4. **Slack App** created with:
    - Bot Token (starts with `xoxb-`)
    - Signing Secret
    - Bot Token Scopes: `app_mentions:read`, `chat:write`, `im:history`
@@ -175,7 +208,6 @@ This will:
 │   └── requirements.txt    # Python dependencies
 ├── deploy.sh               # Deployment script
 ├── cleanup.sh              # Cleanup script
-├── DEPLOYMENT-GUIDE.md     # Detailed deployment guide
 ├── STRUCTURE.md            # Project structure details
 ├── LICENSE                 # Apache 2.0 License
 └── README.md               # This file
@@ -242,7 +274,6 @@ Set before deployment:
 
 For issues or questions:
 1. Check CloudWatch logs
-2. Review DEPLOYMENT-GUIDE.md for detailed instructions
-3. Review STRUCTURE.md for project organization
-4. Verify all prerequisites are met
-5. Ensure Slack app configuration is correct
+2. Review STRUCTURE.md for project organization
+3. Verify all prerequisites are met
+4. Ensure Slack app configuration is correct
