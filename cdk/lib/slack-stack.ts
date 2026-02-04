@@ -112,6 +112,19 @@ exports.handler = async (event) => {
                     thread_ts: e.thread_ts || e.ts
                 });
                 
+                // Validate Slack API response before proceeding
+                if (!slackResponse.ok) {
+                    logError(\`Slack API call failed: \${slackResponse.error || 'Unknown error'}\`);
+                    logDebug(\`Full Slack error response: \${JSON.stringify(slackResponse)}\`);
+                    return {statusCode: 500, body: JSON.stringify({error: 'Failed to post processing message to Slack'})};
+                }
+                
+                if (!slackResponse.ts) {
+                    logError('Slack API response missing timestamp (ts)');
+                    logDebug(\`Full Slack response: \${JSON.stringify(slackResponse)}\`);
+                    return {statusCode: 500, body: JSON.stringify({error: 'Invalid Slack API response'})};
+                }
+                
                 logInfo(\`Processing message posted, ts: \${slackResponse.ts}\`);
                 logDebug(\`Full Slack response: \${JSON.stringify(slackResponse)}\`);
                 
