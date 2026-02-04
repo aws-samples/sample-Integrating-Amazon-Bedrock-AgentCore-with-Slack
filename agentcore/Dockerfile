@@ -1,5 +1,5 @@
-# Use Python 3.11 ARM64 base image from AWS ECR Public Gallery
-FROM --platform=linux/arm64 public.ecr.aws/docker/library/python:3.11-slim
+# Use Python 3.14 ARM64 base image from AWS ECR Public Gallery
+FROM --platform=linux/arm64 public.ecr.aws/docker/library/python:3.14-slim
 
 WORKDIR /app
 

@@ -131,7 +131,7 @@ export class WeatherAgentImageStack extends cdk.Stack {
     const triggerBuild = new cdk.CustomResource(this, 'TriggerBuild', {
       serviceToken: new cdk.custom_resources.Provider(this, 'TriggerBuildProvider', {
         onEventHandler: new cdk.aws_lambda.Function(this, 'TriggerBuildHandler', {
-          runtime: cdk.aws_lambda.Runtime.PYTHON_3_11,
+          runtime: cdk.aws_lambda.Runtime.PYTHON_3_14,
           handler: 'index.handler',
           code: cdk.aws_lambda.Code.fromInline(`
 import boto3
