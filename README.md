@@ -30,7 +30,7 @@ The following diagram represents the solution architecture, which contains three
 
 **Section C – Slack Integration Infrastructure** – Lastly, `WeatherAgentSlackStack` deploys the integration infrastructure (API Gateway, Secrets Manager, Lambda functions, and SQS). This handles webhook verification, Amazon Simple Queue Service (Amazon SQS) queuing, and message processing through three Lambda functions. This layer is reusable for AgentCore use cases.
 
-<!-- IMAGE: Architecture Diagram - AgentCore Slack Integration Diagram -->
+![AgentCore Slack Integration Diagram](Images/1.AgentCore-Slack-Integration-Diagram.png)
 
 The request flow consists of the following steps:
 
@@ -73,17 +73,17 @@ Creating applications in Slack requires specific permissions that vary by organi
 
 1. Go to [Slack API](https://api.slack.com/apps) and choose **Create New App.**
 
-<!-- IMAGE: SlackAPI Create New App -->
+![AgentCore SlackAPI Create New App](Images/2.AgentCore-Slack-SlackAPI-Create-New-App.png)
 
 2. In the **Create an app** pop-up, choose **From scratch.**
 
-<!-- IMAGE: Create an app from scratch -->
+![AgentCore Slack Create an app from scratch](Images/3.AgentCore-Slack-Create-an-app-from-scratch.png)
 
 3. For **App Name**, enter `agent-core-weather-agent`.
 4. For **Pick a workspace to develop your app in**, choose the workspace where you want to use this application.
 5. Choose **Create App.**
 
-<!-- IMAGE: Name app and choose workspace -->
+![AgentCore Slack Name app and choose workspace](Images/4.AgentCore-Slack-Name-app-and-choose-workspace.png)
 
 After the application is created, you will be taken to the **Basic Information** page.
 
@@ -95,27 +95,27 @@ After the application is created, you will be taken to the **Basic Information**
    - `im:read`
    - `im:write`
 
-<!-- IMAGE: Scopes GIF -->
+![AgentCore Slack Scopes](Images/5.AgentCore-Slack-Scopes-comp.gif)
 
 8. On the **OAuth & Permissions** page, navigate to the **OAuth Tokens** section and choose **Install to ExampleCorp.**
 9. On the following page, choose **Allow** to complete the process.
 
-<!-- IMAGE: AgentCore Weather Agent Install GIF -->
+![AgentCore Slack Weather Agent Install](Images/6.AgentCore-Slack-AgentCoreWeatherAgent-Install-compressed.gif)
 
 10. On the **OAuth & Permissions** page, navigate to **OAuth Tokens** and copy the value for the **Bot User OAuth Token** that has been created. Save this in a notepad to use later when you're deploying the infrastructure.
 
-<!-- IMAGE: Copy OAuthToken -->
+![AgentCore Slack Copy OAuthToken](Images/7.AgentCore-Slack-Copy-OAuthToken.png)
 
 11. In the navigation pane under **Settings**, choose **Basic Information.**
 12. Navigate to **Signing Secret** and choose **Show**.
 13. Copy and save this value to your notepad to use later when you're deploying the infrastructure.
 
-<!-- IMAGE: Signing Secret -->
+![AgentCore Slack Signing Secret](Images/8.AgentCore-Slack-SigningSecret.png)
 
 14. To allow direct messaging with the app within Slack, navigate to **App Home** in the navigation pane under **Features**.
 15. In the **Show Tabs** section, enable **Allow users to send Slash commands and messages from the messages tab.**
 
-<!-- IMAGE: Slash Commands GIF -->
+![AgentCore Slack Slash Commands](Images/9.AgentCore-Slack-Slack-SlashCommands-compressed.gif)
 
 **Note:** You will complete the Event Subscriptions configuration in Step 3 after deploying the infrastructure and obtaining the Webhook URL.
 
@@ -144,7 +144,7 @@ After deploying the infrastructure and obtaining the Webhook URL, the Slack app 
 
 1. The configuration requires returning to the Slack app at [Slack API](https://api.slack.com/apps) and selecting the `agent-core-weather-agent`
 
-<!-- IMAGE: Slack Select Your Apps -->
+![AgentCore Slack Select Your Apps](Images/10.AgentCore-Slack-Slack-Select-YourApps.png)
 
 2. In the navigation pane under **Features**, choose **Event Subscriptions.**
 3. Toggle **Enable Events** to **On**.
@@ -155,27 +155,27 @@ After deploying the infrastructure and obtaining the Webhook URL, the Slack app 
    - `message.im`
 7. Choose **Save Changes** at the bottom of the page.
 
-<!-- IMAGE: Slack Event Subscriptions GIF -->
+![AgentCore Slack Event Subscriptions](Images/11.AgentCore-Slack-EventSubscriptions-Comp.gif)
 
 8. Under Settings, navigate to **Install App** and select **Reinstall to ExampleCorp**. When the pop-up screen appears, select **Allow**.
 
-<!-- IMAGE: Reinstall Slack App GIF -->
+![AgentCore Slack Reinstall Slack App](Images/12.AgentCore-Slack-ReinstallSlackApp-compressed.gif)
 
 ## Step 4: Test the integration of AgentCore in Slack
 
 Testing requires locating `agent-core-weather-agent` in the **Apps** section of Slack. You can invite the APP to an existing channel by typing in `/invite @agent-core-weather-agent`. After adding this application to a channel, users can interact with the AgentCore Agent by using `@agent-core-weather-agent` to get weather information, or you can also chat directly with the agent by going to the App directly.
 
-<!-- IMAGE: Add Agent App in Slack GIF -->
+![AgentCore Slack Add Agent App in Slack](Images/13.AgentCore-Slack-AddAgent-App-in-Slack-compressed.gif)
 
 **Direct messaging**: Users can go directly to the app in the Apps section and chat with it one-on-one.
 
 An example query is, "*What's the weather in Dallas today*". The application first sends a "*Processing your request…*" message as an initial response. After the AgentCore Agent completes its analysis, this temporary message is replaced with the actual weather information. Users can continue to converse without repeating due to the integration of AgentCore Memory.
 
-<!-- IMAGE: AgentCore Slack Conversation GIF -->
+![AgentCore Slack Conversation](Images/14.AgentCore-Slack-AgentCore-Slack-Conversation-compressed.gif)
 
 **Channel integration**: The app can be added to a Slack channel, which users can use to invoke it from within the channel by mentioning `@agent-core-weather-agent` as shown in the following image.
 
-<!-- IMAGE: AgentCore Slack Channel Integration -->
+![AgentCore Slack Channel Integration](Images/15.AgentCore-Slack-Channel-Integration.png)
 
 ## Understanding the integration architecture
 
@@ -233,18 +233,4 @@ Clone the complete solution from the [GitHub repository](https://github.com/aws-
 - [Get started with Amazon Bedrock AgentCore](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-get-started-toolkit.html)
 - [Make agents a reality with Amazon Bedrock AgentCore: Now generally available](https://aws.amazon.com/blogs/machine-learning/amazon-bedrock-agentcore-is-now-generally-available/)
 
----
 
-## About the authors
-
-**Salman Ahmed**
-
-Salman is a Senior Technical Account Manager at AWS. He specializes in guiding customers through the design, implementation, and support of AWS solutions. Combining his networking expertise with a drive to explore new technologies, he helps organizations successfully navigate their cloud journey. Outside of work, he enjoys photography, traveling, and watching his favorite sports teams.
-
-**Ravi Kumar**
-
-Ravi is a Senior Technical Account Manager in AWS Enterprise Support who helps customers in the travel and hospitality industry to streamline their cloud operations on AWS. He is a results-driven IT professional with over 20 years of experience. Ravi is passionate about generative AI and actively explores its applications in cloud computing. In his free time, Ravi enjoys creative activities like painting. He also likes playing cricket and traveling to new places.
-
-**Sergio Barraza**
-
-Sergio is a Senior Technical Account Manager at AWS, helping customers on designing and optimizing cloud solutions. With more than 25 years in software development, he guides customers through AWS services adoption. Outside of work, Sergio is a multi-instrument musician playing guitar, piano, and drums, and he also practices Wing Chun Kung Fu.
